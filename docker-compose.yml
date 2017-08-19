@@ -1,0 +1,22 @@
+version: '3'
+services:
+
+  node:
+    image: node
+    ports:
+      - "8080:8080"
+    volumes:
+      - "./:/app"
+    working_dir: /app
+    command: node server.js
+    container_name: node-jakiwol
+    environment:
+      - PORT=8080
+    # links:
+    #   - mongo
+
+  # mongo:
+  #   image: mongo
+  #   ports:
+  #     - "27017:27017"
+  #   container_name: mongo-jakiwol
