@@ -1,0 +1,17 @@
+{
+  "name": "shop.jakiwol.com",
+  "version": "0.0.1",
+  "description": "jakiwol.com shop api",
+  "main": "server.js",
+  "author": "Adam Buczek, adambuczek@gmail.com",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.15.4",
+    "mongoose": "^4.11.7",
+    "request": "^2.81.0",
+    "request-promise": "^4.2.1"
+  },
+  "scripts": {
+    "start": "node server.js"
+  }
+}
