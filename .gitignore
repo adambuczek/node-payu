@@ -1,0 +1,9 @@
+# ignore dotfiles..
+.*
+# ...other that
+!.gitignore
+
+# ignore dependency directories
+node_modules
+
+yarn-error.log
