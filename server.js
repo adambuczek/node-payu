@@ -23,8 +23,10 @@ let payu = new PayU(settings);
 
 // mongoose.connect('mongodb://mongo:27017');
 
-router.get('/', function(req, res) {
-  payu.authorize().then((auth) => res.json({ message: auth }));
+router.get('/', function(req, res) {});
+
+router.get('/paymethods', function(req, res) {
+  payu.paymethods().then((methods) => res.json(methods));
 });
 
 app.use('/', router);

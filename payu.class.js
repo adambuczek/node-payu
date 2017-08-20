@@ -38,17 +38,12 @@ const PayU = function(settings) {
 };
 
 PayU.prototype.authorize = async function () {
-
     const url = '/pl/standard/user/oauth/authorize';
     let now = Math.floor(Date.now() / 1000), //Get the current date in ms, convert to s and floor
         cacheLocation = '.cache',
         auth;
-
     try {
-
       auth = (fs.existsSync()) ? JSON.parse(fs.readFileSync(cacheLocation)) : false;
-      console.log(`read from file`);
-
       if (!auth || now >= auth.expires_at) {
         let response = await requestPromise({
           method: 'POST',
@@ -59,20 +54,28 @@ PayU.prototype.authorize = async function () {
         auth = JSON.parse(response);
         auth.expires_at = now + auth.expires_in;
         fs.writeFile(cacheLocation, JSON.stringify(auth), (err) => {if (err) throw new Exception(err)});
-        console.log(`refresh cache`);
-        console.log(auth);
-
-      } else {
-        console.log(`from cache`);
-        console.log(auth);
       }
-
       return auth.access_token;
-
     } catch (e) {
       console.error(e);
     }
 
+};
+
+PayU.prototype.paymethods = async function () {
+  let auth = await this.authorize();
+  const url = '/api/v2_1/paymethods/';
+  const headers = {'Authorization': `Bearer ${auth}`};
+  try {
+    let response = await requestPromise({
+      method: 'GET',
+      url: this.baseUrl + url,
+      headers: headers
+    });
+    return JSON.parse(response);
+  } catch (e) {
+    console.error(e);
+  }
 };
 
 module.exports = PayU;
