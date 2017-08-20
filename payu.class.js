@@ -153,15 +153,27 @@ PayU.prototype.order = async function(req) {
 
   try {
 
-    let response = await requestPromise({
+    let response = JSON.parse(await requestPromise({
       method: 'POST',
       url: this.baseUrl + url,
       headers: headers,
       body: JSON.stringify(order),
       simple: false,
+    }));
+
+    requestPromise({
+      method: 'POST',
+      url: 'http://192.168.99.100:8080/order',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        id: response.orderId,
+        totalAmount,
+        products,
+        client: buyer
+      })
     });
 
-    return JSON.parse(response);
+    return response;
 
   } catch (e) {
     ErrorHandler.emit('error', e);

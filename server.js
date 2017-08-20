@@ -2,6 +2,7 @@
 
 // Dependencies
 const requestPromise = require('request-promise');
+const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const express = require('express');
 const YAML = require('yamljs');
@@ -11,6 +12,8 @@ const fs = require('fs');
 const router = express.Router();
 const port = process.env.PORT || 8080;
 const app = express();
+
+app.use(bodyParser.json());
 
 // Mongose settings
 mongoose.Promise = global.Promise;
@@ -47,6 +50,25 @@ router.get('/shippingMethods', async function(req, res) {
     let db = await mongoose.connect(mongoUri, mongooseOptions);
     let shippingMethods = await require('./models/shippingMethod.js').find({});
     res.json(shippingMethods);
+  } catch (err) {
+    console.error(err);
+  }
+});
+
+router.post('/order', async function(req, res) {
+  try {
+    let db = await mongoose.connect(mongoUri, mongooseOptions);
+    let order = await new require('./models/order.js')(req.body).save();
+  } catch (err) {
+    console.error(err);
+  }
+});
+
+router.get('/orders', async function(req, res) {
+  try {
+    let db = await mongoose.connect(mongoUri, mongooseOptions);
+    let orders = await require('./models/order.js').find({});
+    res.json(orders);
   } catch (err) {
     console.error(err);
   }
