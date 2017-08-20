@@ -106,6 +106,10 @@ PayU.prototype.order = async function(req) {
     method: 'GET',
     url: 'http://192.168.99.100:8080/products'
   }));
+  const shippingMethods = JSON.parse(await requestPromise({
+    method: 'GET',
+    url: 'http://192.168.99.100:8080/shippingMethods'
+  }));
   const orderedProducts = [{
     id: 'ld', quantity: 2,
   },{            
@@ -113,7 +117,7 @@ PayU.prototype.order = async function(req) {
   },{            
     id: 'sd', quantity: 2,
   },{            
-    id: 'sp', quantity: 23,
+    id: 'sp', quantity: 3,
   }];
   // knowing that ids are unique i can use first element of filtered array
   const products = orderedProducts.map(product => Object.assign({}, allProducts.filter(p => product.id === p.id)[0], product));
@@ -144,9 +148,8 @@ PayU.prototype.order = async function(req) {
     totalAmount,
     products,
     buyer,
+    shippingMethods,
   };
-
-  console.log(order);
 
   try {
 

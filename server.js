@@ -42,6 +42,16 @@ router.get('/products', async function(req, res) {
   }
 });
 
+router.get('/shippingMethods', async function(req, res) {
+  try {
+    let db = await mongoose.connect(mongoUri, mongooseOptions);
+    let shippingMethods = await require('./models/shippingMethod.js').find({});
+    res.json(shippingMethods);
+  } catch (err) {
+    console.error(err);
+  }
+});
+
 router.get('/paymethods', function(req, res) {
   payu.paymethods().then((methods) => res.json(methods)).catch((err) => console.error(err));
 });
