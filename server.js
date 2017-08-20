@@ -15,8 +15,6 @@ const port = process.env.PORT || 8080;
 
 const settings = YAML.parse(fs.readFileSync('.settings.yml', 'utf8'));
 
-console.log(settings);
-
 let payu = new PayU(settings);
 
 // mongoose.connect('mongodb://mongo:27017');
