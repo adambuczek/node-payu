@@ -4,6 +4,18 @@ const requestPromise = require('request-promise');
 const request = require('request');
 const fs = require('fs');
 
+// make promise version of fs.readFile()
+fs.readFileAsync = function(filename) {
+    return new Promise(function(resolve, reject) {
+        fs.readFile(filename, function(err, data){
+            if (err)
+                reject(err);
+            else
+                resolve(data);
+        });
+    });
+};
+
 const PayU = function(settings) {
 
   this.clientId = settings.clientId;
@@ -30,23 +42,20 @@ PayU.prototype.authorize = async function () {
     const url = '/pl/standard/user/oauth/authorize';
     let now = Math.floor(Date.now() / 1000), //Get the current date in ms, convert to s and floor
         cacheLocation = '.cache',
-        authResponse = function() {
-          return requestPromise({
-            method: 'POST',
-            url: this.baseUrl + url,
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: `grant_type=client_credentials&client_id=${ this.clientId }&client_secret=${ this.clientSecret }`
-          });
-        },
         auth;
 
     try {
 
-      auth = JSON.parse(fs.readFileSync(cacheLocation));
+      auth = (fs.existsSync()) ? JSON.parse(fs.readFileSync(cacheLocation)) : false;
       console.log(`read from file`);
 
-      if (now >= auth.expires_at) {
-        let response = await authResponse();
+      if (!auth || now >= auth.expires_at) {
+        let response = await requestPromise({
+          method: 'POST',
+          url: this.baseUrl + url,
+          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+          body: `grant_type=client_credentials&client_id=${ this.clientId }&client_secret=${ this.clientSecret }`
+        });
         auth = JSON.parse(response);
         auth.expires_at = now + auth.expires_in;
         fs.writeFile(cacheLocation, JSON.stringify(auth), (err) => {if (err) throw new Exception(err)});
