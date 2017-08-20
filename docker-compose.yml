@@ -9,7 +9,7 @@ services:
       - "./:/app"
     working_dir: /app
     command: node server.js
-    container_name: node-jakiwol
+    container_name: node-server
     environment:
       - PORT=8080
     links:
@@ -19,4 +19,4 @@ services:
     image: mongo
     ports:
       - "27017:27017"
-    container_name: mongo-jakiwol
+    container_name: mongo-db
