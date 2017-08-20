@@ -101,14 +101,6 @@ PayU.prototype.paymethods = async function() {
 };
 
 PayU.prototype.order = async function(req) {
-  /**
-  * products come as {id,quantity} and must be resolved against a db to
-  * {name, unitPrice, quantity} before the order is created
-  * ResolveProducts(order, collection)
-  * 1. connect to db.then and save all Products into a collection
-  * 2. match products in order with products from db by id
-  * 3. populate products in order with fields from database
-  */
   const auth = await this.authorize();
   const allProducts = JSON.parse(await requestPromise({
     method: 'GET',
