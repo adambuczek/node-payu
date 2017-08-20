@@ -12,11 +12,11 @@ services:
     container_name: node-jakiwol
     environment:
       - PORT=8080
-    # links:
-    #   - mongo
+    links:
+      - mongo
 
-  # mongo:
-  #   image: mongo
-  #   ports:
-  #     - "27017:27017"
-  #   container_name: mongo-jakiwol
+  mongo:
+    image: mongo
+    ports:
+      - "27017:27017"
+    container_name: mongo-jakiwol
