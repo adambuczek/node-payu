@@ -78,7 +78,6 @@ PayU.prototype.authorize = async function() {
     return auth.access_token;
   } catch (e) {
     ErrorHandler.emit('error', e);
-    throw new Error(400);
   }
 };
 
@@ -101,12 +100,37 @@ PayU.prototype.paymethods = async function() {
 };
 
 PayU.prototype.order = async function(req) {
+  /**
+  * products come as {id,quantity} and must be resolved against a db to
+  * {name, unitPrice, quantity} before the order is created
+  * ResolveProducts(order, collection)
+  * 1. connect to db.then and save all Products into a collection
+  * 2. match products in order with products from db by id
+  * 3. populate products in order with fields from database
+  */
   let auth = await this.authorize();
+
   const url = '/api/v2_1/orders/';
+
   const headers = {
     'Authorization': `Bearer ${auth}`,
     'Content-Type': 'application/json'
   };
+
+  const products = [{
+    id: 'ld',
+    quantity: '2',
+  },{            
+    id: 'lp',
+    quantity: '1',
+  },{            
+    id: 'sd',
+    quantity: '2',
+  },{            
+    id: 'sp',
+    quantity: '2',
+  }];
+
   const buyer = {        
     email: "john.doe@example.com",
     phone: "654111654",
@@ -114,15 +138,7 @@ PayU.prototype.order = async function(req) {
     lastName: "Doe",
     language: "en"    
   };
-  const products = [{
-    name: "Wireless Mouse for Laptop",
-    unitPrice: "15000",
-    quantity: "1"        
-  },{            
-    name: "HDMI cable",
-    unitPrice: "6000",
-    quantity: "1"        
-  }];
+
   const odrer = {
     notifyUrl: this.notifyUrl,
     continueUrl: this.continueUrl,

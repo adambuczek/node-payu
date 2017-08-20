@@ -1,31 +1,45 @@
 "use strict";
 
-const express = require('express');
+// Dependencies
 const requestPromise = require('request-promise');
+const mongoose = require('mongoose');
+const express = require('express');
 const YAML = require('yamljs');
 const fs = require('fs');
-// const mongoose = require('mongoose');
 
-const PayU = require('./payu.class.js');
-
+// Express settings
 const router = express.Router();
+const port = process.env.PORT || 8080;
 const app = express();
 
-const port = process.env.PORT || 8080;
+// Mongose settings
+mongoose.Promise = global.Promise;
+const mongoUri = 'mongodb://mongo:27017';
+const mongooseOptions = {
+  useMongoClient: true
+};
 
+// PayU settings
 const settings = YAML.parse(fs.readFileSync('.settings.yml', 'utf8'));
-
+const PayU = require('./payu.class.js');
 let payu = new PayU(settings);
 
-// mongoose.connect('mongodb://mongo:27017');
-
+// Routes
 router.get('/', function(req, res) {
-
   payu.order(req).then((response) => {
     const url = response.redirectUri;
     res.send(`<a href="${url}">place order</a>`);
   }).catch((err) => console.error(err));
+});
 
+router.get('/products', async function(req, res) {
+  try {
+    let db = await mongoose.connect(mongoUri, mongooseOptions);
+    let products = await require('./models/product.js').find({});
+    res.json(products);
+  } catch (err) {
+    console.error(err);
+  }
 });
 
 router.get('/paymethods', function(req, res) {
