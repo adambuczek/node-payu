@@ -2,6 +2,8 @@
 
 const express = require('express');
 const requestPromise = require('request-promise');
+const YAML = require('yamljs');
+const fs = require('fs');
 // const mongoose = require('mongoose');
 
 const PayU = require('./payu.class.js');
@@ -11,33 +13,20 @@ const app = express();
 
 const port = process.env.PORT || 8080;
 
-const settings = {
-  posId: 302060,
-  posDesc: "Jakiwół - ręcznie robiony na twoje zamówienie",
-  posCurrency: "PLN",
-  clientId: 302060,
-  clientSecret: 'db40979e497def5477a72128d3ecf696',
-  signatureKey: 'b77aa26adb1fe6743b4fe1274b36e007',
-  environment: 'sandbox',
-  notifyUrl: 'http://192.168.99.100:8080/notify',
-  continueUrl: 'http://192.168.99.100:8080',
-};
+const settings = YAML.parse(fs.readFileSync('.settings.yml', 'utf8'));
+
+console.log(settings);
 
 let payu = new PayU(settings);
 
 // mongoose.connect('mongodb://mongo:27017');
 
-router.get('/', async function(req, res) {
+router.get('/', function(req, res) {
 
-  let response = await requestPromise({
-    method: 'GET',
-    url: 'http://192.168.99.100:8080/order',
-    simple: false,
-  });
-
-  const url = JSON.parse(response).redirectUri;
-
-  res.send(`<a href="${url}">place order</a>`);
+  payu.order(req).then((response) => {
+    const url = response.redirectUri;
+    res.send(`<a href="${url}">place order</a>`);
+  }).catch((err) => console.error(err));
 
 });
 
@@ -45,12 +34,10 @@ router.get('/paymethods', function(req, res) {
   payu.paymethods().then((methods) => res.json(methods)).catch((err) => console.error(err));
 });
 
-router.get('/order', function(req, res) {
-  payu.order(req).then((link) => res.json(link)).catch((err) => console.error(err));
-});
-
 router.post('/notify', function(req, res) {
-  console.log('notify: ' + req);
+  console.log('notify: ');
+  console.log(req.body);
+  res.json(req.body);
 });
 
 app.use('/', router);
