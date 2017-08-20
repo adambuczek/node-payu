@@ -57,7 +57,7 @@ PayU.prototype.authorize = async function() {
     cacheLocation = '.cache',
     auth;
   try {
-    auth = (fs.existsSync()) ? JSON.parse(fs.readFileSync(cacheLocation)) : false;
+    auth = (fs.existsSync()) ? JSON.parse(fs.readFileSync(cacheLocation, 'utf8')) : false;
     if (!auth || now >= auth.expires_at) {
       const headers = {
         'Content-Type': 'application/x-www-form-urlencoded'
@@ -144,6 +144,7 @@ PayU.prototype.order = async function(req) {
       body: JSON.stringify(odrer),
       simple: false,
     });
+
     return JSON.parse(response);
 
   } catch (e) {
