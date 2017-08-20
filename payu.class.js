@@ -13,6 +13,7 @@ ErrorHandler.on('error', (err) => {
     if (e) console.error(e);
   });
 });
+
 // make promise version of fs.readFile()
 // fs.readFileAsync = function(filename) {
 //     return new Promise(function(resolve, reject) {
@@ -108,7 +109,23 @@ PayU.prototype.order = async function(req) {
   * 2. match products in order with products from db by id
   * 3. populate products in order with fields from database
   */
-  let auth = await this.authorize();
+  const auth = await this.authorize();
+  const allProducts = JSON.parse(await requestPromise({
+    method: 'GET',
+    url: 'http://192.168.99.100:8080/products'
+  }));
+  const orderedProducts = [{
+    id: 'ld', quantity: 2,
+  },{            
+    id: 'lp', quantity: 1,
+  },{            
+    id: 'sd', quantity: 2,
+  },{            
+    id: 'sp', quantity: 23,
+  }];
+  // knowing that ids are unique i can use first element of filtered array
+  const products = orderedProducts.map(product => Object.assign({}, allProducts.filter(p => product.id === p.id)[0], product));
+  const totalAmount = products.reduce((acc, curr) => acc += curr.unitPrice * curr.quantity, 0);
 
   const url = '/api/v2_1/orders/';
 
@@ -116,20 +133,6 @@ PayU.prototype.order = async function(req) {
     'Authorization': `Bearer ${auth}`,
     'Content-Type': 'application/json'
   };
-
-  const products = [{
-    id: 'ld',
-    quantity: '2',
-  },{            
-    id: 'lp',
-    quantity: '1',
-  },{            
-    id: 'sd',
-    quantity: '2',
-  },{            
-    id: 'sp',
-    quantity: '2',
-  }];
 
   const buyer = {        
     email: "john.doe@example.com",
@@ -139,17 +142,19 @@ PayU.prototype.order = async function(req) {
     language: "en"    
   };
 
-  const odrer = {
+  const order = {
     notifyUrl: this.notifyUrl,
     continueUrl: this.continueUrl,
     customerIp: req.ip, // change this when behind the reverse proxy
     merchantPosId: this.posId,
     description: this.posDesc,
     currencyCode: this.posCurrency,
-    totalAmount: products.reduce((acc, curr) => acc += parseInt(curr.unitPrice), 0),
-    products: products,
-    buyer: buyer,
+    totalAmount,
+    products,
+    buyer,
   };
+
+  console.log(order);
 
   try {
 
@@ -157,7 +162,7 @@ PayU.prototype.order = async function(req) {
       method: 'POST',
       url: this.baseUrl + url,
       headers: headers,
-      body: JSON.stringify(odrer),
+      body: JSON.stringify(order),
       simple: false,
     });
 
