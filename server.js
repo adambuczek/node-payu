@@ -30,6 +30,7 @@ let payu = new PayU(settings);
 // Routes
 router.get('/', function(req, res) {
   payu.order(req).then((response) => {
+    if (response.statusCode !== 'SUCCESS') console.log(response);
     const url = response.redirectUri;
     res.send(`<a href="${url}">place order</a>`);
   }).catch((err) => console.error(err));
@@ -54,6 +55,13 @@ router.get('/shippingMethods', async function(req, res) {
     console.error(err);
   }
 });
+
+/*
+ * Next steps
+ *    1. add front end cart - this way i can finish the order state change handling on the dev server with notofication url open
+ *    OR 2. fing a way to tunnel requests from dev.adambuczek.com into here
+ *
+ */
 
 router.post('/order', async function(req, res) {
   try {
