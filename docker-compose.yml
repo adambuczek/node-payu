@@ -19,4 +19,6 @@ services:
     image: mongo
     ports:
       - "27017:27017"
+    volumes:
+      - "./database:/docker-entrypoint-initdb.d" # init shell script and dump dir in one
     container_name: mongo-db
