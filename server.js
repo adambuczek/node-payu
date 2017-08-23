@@ -46,6 +46,16 @@ router.get('/products', async function(req, res) {
   }
 });
 
+router.get('/product/:id', async function(req, res) {
+  try {
+    let db = await mongoose.connect(mongoUri, mongooseOptions);
+    let product = await require('./models/product.js').findById(req.params.id);
+    res.json(product);
+  } catch (err) {
+    console.error(err);
+  }
+});
+
 router.get('/shippingMethods', async function(req, res) {
   try {
     let db = await mongoose.connect(mongoUri, mongooseOptions);
@@ -89,7 +99,7 @@ router.get('/paymethods', function(req, res) {
 router.post('/notify', function(req, res) {
   console.log('notify: ');
   console.log(req.body);
-  res.json(req.body);
+  res.status(200);
 });
 
 app.use('/', router);

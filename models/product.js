@@ -6,4 +6,9 @@ const productSchema = new Schema({
   unitPrice: Number,
   id: String,
 });
+
+productSchema.statics.findById = function(id) {
+  return this.find({ id: id });
+};
+
 module.exports = mongoose.model('product', productSchema);
