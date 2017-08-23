@@ -102,6 +102,16 @@ PayU.prototype.paymethods = async function() {
 
 PayU.prototype.order = async function(req) {
   const auth = await this.authorize();
+
+
+  /******************************************************************************
+   *      All functionality beetween hyphen lines below should be moved to the  *
+   *      server. The server should act as intermediate layer beetween database *
+   *      and other modules.                                                    *
+   ******************************************************************************/
+
+  //----------------------------------------------------------------------------
+
   /**
    * All Products from the DB.
    * This is later used to resolve product IDs into full product info.
@@ -132,6 +142,8 @@ PayU.prototype.order = async function(req) {
   // knowing that ids are unique i can use first element of filtered array
   const products = orderedProducts.map(product => Object.assign({}, allProducts.filter(p => product.id === p.id)[0], product));
   const totalAmount = products.reduce((acc, curr) => acc += curr.unitPrice * curr.quantity, 0);
+
+  //----------------------------------------------------------------------------
 
   const url = '/api/v2_1/orders/';
 

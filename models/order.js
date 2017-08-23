@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 // Order Schema
 const orderSchema = new Schema({
-  id: String,
+  id: Schema.Types.ObjectId,
   createDate: String,
   statusHistory: Array,
   products: Array,
@@ -19,7 +19,7 @@ orderSchema.pre('save', function(next) {
   let currentDate = new Date();
   this.updated_at = currentDate;
   if (!this.created_at) {
-    this.statusHistory.push({
+    this.statusHistory.unshift({
       status: 'NEW',
       changed_at: currentDate,
     });
