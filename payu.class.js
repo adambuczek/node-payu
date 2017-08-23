@@ -83,7 +83,7 @@ PayU.prototype.authorize = async function() {
 };
 
 PayU.prototype.paymethods = async function() {
-  let auth = await this.authorize();
+  const auth = await this.authorize();
   const url = '/api/v2_1/paymethods/';
   const headers = {
     'Authorization': `Bearer ${auth}`
@@ -102,23 +102,33 @@ PayU.prototype.paymethods = async function() {
 
 PayU.prototype.order = async function(req) {
   const auth = await this.authorize();
+  /**
+   * All Products from the DB.
+   * This is later used to resolve product IDs into full product info.
+   * @type JSON Array
+   */
   const allProducts = JSON.parse(await requestPromise({
     method: 'GET',
     url: 'http://192.168.99.100:8080/products'
   }));
+  /**
+   * All offered shipping methods.
+   * @type JSON Array
+   */
   const shippingMethods = JSON.parse(await requestPromise({
     method: 'GET',
     url: 'http://192.168.99.100:8080/shippingMethods'
   }));
-  const orderedProducts = [{
-    id: 'ld', quantity: 2,
-  },{            
-    id: 'lp', quantity: 1,
-  },{            
-    id: 'sd', quantity: 2,
-  },{            
-    id: 'sp', quantity: 3,
-  }];
+
+  // DEBUG: Mockup Order. Real orders will be sent by frontend.
+  const orderedProducts = [
+    {id: 'ld', quantity: 2,},
+    {id: 'lp', quantity: 1,},
+    {id: 'sd', quantity: 2,},
+    {id: 'sp', quantity: 3,},
+  ];
+
+  //
   // knowing that ids are unique i can use first element of filtered array
   const products = orderedProducts.map(product => Object.assign({}, allProducts.filter(p => product.id === p.id)[0], product));
   const totalAmount = products.reduce((acc, curr) => acc += curr.unitPrice * curr.quantity, 0);
@@ -130,14 +140,6 @@ PayU.prototype.order = async function(req) {
     'Content-Type': 'application/json'
   };
 
-  const buyer = {        
-    email: "john.doe@example.com",
-    phone: "654111654",
-    firstName: "John",
-    lastName: "Doe",
-    language: "en"    
-  };
-
   const order = {
     notifyUrl: this.notifyUrl,
     continueUrl: this.continueUrl,
@@ -147,7 +149,6 @@ PayU.prototype.order = async function(req) {
     currencyCode: this.posCurrency,
     totalAmount,
     products,
-    buyer,
     shippingMethods,
   };
 
@@ -169,7 +170,6 @@ PayU.prototype.order = async function(req) {
         id: response.orderId,
         totalAmount,
         products,
-        client: buyer
       })
     });
 
