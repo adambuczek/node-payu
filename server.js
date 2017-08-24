@@ -34,7 +34,7 @@ router.get('/', async function(req, res) {
   * This is how the object send from the frontend should be structured.
   * @type {Array}
   */
-  let mockOrder = [
+  const mockOrder = [
     {id: 'ld', quantity: 2,},
     {id: 'lp', quantity: 1,},
     {id: 'sd', quantity: 2,},
@@ -43,11 +43,13 @@ router.get('/', async function(req, res) {
 
   try {
 
+    const order = mockOrder;
+
     const db = await mongoose.connect(mongoUri, mongooseOptions);
     const Product = require('./models/product.js');
     const ShippingMethod = require('./models/shippingMethod.js');
 
-    const products = mockOrder.map(async function(product) {
+    const products = order.map(async function(product) {
       // Documents returned from queries with the lean option enabled are plain javascript objects
       const resolvedProduct = await Product.findOne({id: product.id}).lean();
       return Object.assign({}, resolvedProduct, product);
