@@ -100,50 +100,8 @@ PayU.prototype.paymethods = async function() {
   }
 };
 
-PayU.prototype.order = async function(req) {
+PayU.prototype.order = async function(products, totalAmount, shippingMethods, customerIp) {
   const auth = await this.authorize();
-
-
-  /******************************************************************************
-   *      All functionality beetween hyphen lines below should be moved to the  *
-   *      server. The server should act as intermediate layer beetween database *
-   *      and other modules.                                                    *
-   ******************************************************************************/
-
-  //----------------------------------------------------------------------------
-
-  /**
-   * All Products from the DB.
-   * This is later used to resolve product IDs into full product info.
-   * @type JSON Array
-   */
-  const allProducts = JSON.parse(await requestPromise({
-    method: 'GET',
-    url: 'http://192.168.99.100:8080/products'
-  }));
-  /**
-   * All offered shipping methods.
-   * @type JSON Array
-   */
-  const shippingMethods = JSON.parse(await requestPromise({
-    method: 'GET',
-    url: 'http://192.168.99.100:8080/shippingMethods'
-  }));
-
-  // DEBUG: Mockup Order. Real orders will be sent by frontend.
-  const orderedProducts = [
-    {id: 'ld', quantity: 2,},
-    {id: 'lp', quantity: 1,},
-    {id: 'sd', quantity: 2,},
-    {id: 'sp', quantity: 3,},
-  ];
-
-  //
-  // knowing that ids are unique i can use first element of filtered array
-  const products = orderedProducts.map(product => Object.assign({}, allProducts.filter(p => product.id === p.id)[0], product));
-  const totalAmount = products.reduce((acc, curr) => acc += curr.unitPrice * curr.quantity, 0);
-
-  //----------------------------------------------------------------------------
 
   const url = '/api/v2_1/orders/';
 
@@ -155,13 +113,13 @@ PayU.prototype.order = async function(req) {
   const order = {
     notifyUrl: this.notifyUrl,
     continueUrl: this.continueUrl,
-    customerIp: req.ip, // change this when behind the reverse proxy
     merchantPosId: this.posId,
     description: this.posDesc,
     currencyCode: this.posCurrency,
-    totalAmount,
-    products,
     shippingMethods,
+    totalAmount,
+    customerIp,
+    products,
   };
 
   try {
@@ -173,17 +131,6 @@ PayU.prototype.order = async function(req) {
       body: JSON.stringify(order),
       simple: false,
     }));
-
-    requestPromise({
-      method: 'POST',
-      url: 'http://192.168.99.100:8080/order',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        id: response.orderId,
-        totalAmount,
-        products,
-      })
-    });
 
     return response;
 

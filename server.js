@@ -28,12 +28,50 @@ const PayU = require('./payu.class.js');
 let payu = new PayU(settings);
 
 // Routes
-router.get('/', function(req, res) {
-  payu.order(req).then((response) => {
-    if (response.statusCode !== 'SUCCESS') console.log(response);
-    const url = response.redirectUri;
-    res.send(`<a href="${url}">place order</a>`);
-  }).catch((err) => console.error(err));
+router.get('/', async function(req, res) {
+
+  /**
+  * This is how the object send from the frontend should be structured.
+  * @type {Array}
+  */
+  let mockOrder = [
+    {id: 'ld', quantity: 2,},
+    {id: 'lp', quantity: 1,},
+    {id: 'sd', quantity: 2,},
+    {id: 'sp', quantity: 3,},
+  ];
+
+  try {
+
+    const db = await mongoose.connect(mongoUri, mongooseOptions);
+    const Product = require('./models/product.js');
+    const ShippingMethod = require('./models/shippingMethod.js');
+
+    const products = mockOrder.map(async function(product) {
+      // Documents returned from queries with the lean option enabled are plain javascript objects
+      const resolvedProduct = await Product.findOne({id: product.id}).lean();
+      return Object.assign({}, resolvedProduct, product);
+    });
+    // Documents returned from queries with the lean option enabled are plain javascript objects
+    const shippingMethods = await ShippingMethod.find({}).lean(); // get all shiping methods
+
+    Promise.all(products).then((products) => {
+      const totalAmount = products.reduce((acc, cur) => acc += cur.unitPrice * cur.quantity, 0);
+
+      payu.order(products, totalAmount, shippingMethods, req.ip).then(response => {
+        // TODO: add exponential falloff retry if the server returns 4xx status
+        // TODO: add error loging with notification system
+        if (response.statusCode !== 'SUCCESS') console.error(response);
+        res.send(`<a href="${response.redirectUri}">place order</a>`);
+      });
+
+    });
+
+
+  } catch (err) {
+    console.error(err);
+  }
+
 });
 
 router.get('/products', async function(req, res) {
