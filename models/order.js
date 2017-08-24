@@ -12,7 +12,7 @@ const orderSchema = new Schema({
 
 orderSchema.methods.changeStatus = function(status) {
   let currentDate = new Date();
-  this.statusHistory.push({status, currentDate,});
+  this.statusHistory.unshift({status, currentDate,});
 };
 
 orderSchema.pre('save', function(next) {
