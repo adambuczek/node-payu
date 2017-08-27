@@ -4,7 +4,8 @@ const Schema = mongoose.Schema;
 const productSchema = new Schema({
   name: String,
   unitPrice: Number,
-  id: String,
+  enabled: { type: Boolean, default: true },
+  added: { type: Date, default: Date.now },
 });
 
 module.exports = mongoose.model('product', productSchema);

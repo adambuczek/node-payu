@@ -2,6 +2,7 @@
 
 const requestPromise = require('request-promise');
 const request = require('request');
+const md5 = require('md5');
 const fs = require('fs');
 
 const EventEmitter = require('events');
@@ -82,6 +83,13 @@ PayU.prototype.authorize = async function() {
   }
 };
 
+PayU.prototype.verifyNotification = function(header, body) {
+  const incoming = header.split(';').reduce((a,c) => {let tmp = c.split('='); a[tmp[0]] = tmp[1]; return a;}, {});
+  if (incoming.algorithm !== 'MD5') throw new Exception(`Unsupported hashing algorithm: ${incoming.algorithm}`);
+  if (incoming.signature === md5(body + this.signatureKey)) return true;
+  return false;
+}
+
 PayU.prototype.paymethods = async function() {
   const auth = await this.authorize();
   const url = '/api/v2_1/paymethods/';
@@ -100,7 +108,7 @@ PayU.prototype.paymethods = async function() {
   }
 };
 
-PayU.prototype.order = async function(products, totalAmount, shippingMethods, customerIp) {
+PayU.prototype.order = async function(order) {
   const auth = await this.authorize();
 
   const url = '/api/v2_1/orders/';
@@ -110,25 +118,24 @@ PayU.prototype.order = async function(products, totalAmount, shippingMethods, cu
     'Content-Type': 'application/json'
   };
 
-  const order = {
-    notifyUrl: this.notifyUrl,
-    continueUrl: this.continueUrl,
-    merchantPosId: this.posId,
-    description: this.posDesc,
-    currencyCode: this.posCurrency,
-    shippingMethods,
-    totalAmount,
-    customerIp,
-    products,
-  };
-
   try {
 
     let response = JSON.parse(await requestPromise({
       method: 'POST',
       url: this.baseUrl + url,
       headers: headers,
-      body: JSON.stringify(order),
+      body: JSON.stringify({
+        products: order.products,
+        description: this.posDesc,
+        merchantPosId: this.posId,
+        notifyUrl: this.notifyUrl,
+        extOrderId: order.extOrderId,
+        customerIp: order.customerIp,
+        continueUrl: this.continueUrl,
+        currencyCode: this.posCurrency,
+        totalAmount: order.totalAmount,
+        shippingMethods: order.shippingMethods,
+      }),
       simple: false,
     }));
 

@@ -2,27 +2,43 @@ const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 // Order Schema
 const orderSchema = new Schema({
-  id: Schema.Types.ObjectId,
-  createDate: String,
-  statusHistory: Array,
-  products: Array,
+  created_at: Date,
+  statusHistory: [{
+    status: String,
+    changed: Date
+  }],
+  products: [{
+    quantity: Number,
+    product: {
+      type: Schema.Types.ObjectId,
+      ref: 'product'
+    }
+  }],
   totalAmount: Number,
-  client: Object
+  client: {
+    type: Schema.Types.ObjectId,
+    ref: 'user'
+  },
+  shippingMethod: {
+    type: Schema.Types.ObjectId,
+    ref: 'shippingMethod'
+  },
+  updated_at: Date,
 });
 
 orderSchema.methods.changeStatus = function(status) {
-  let currentDate = new Date();
-  this.statusHistory.unshift({status, currentDate,});
+  this.statusHistory.unshift({
+    changed: new Date(),
+    status,
+  });
+  return this;
 };
 
 orderSchema.pre('save', function(next) {
   let currentDate = new Date();
   this.updated_at = currentDate;
   if (!this.created_at) {
-    this.statusHistory.unshift({
-      status: 'NEW',
-      changed_at: currentDate,
-    });
+    this.statusHistory.unshift({status: 'NEW', changed: currentDate});
     this.created_at = currentDate;
   }
   next();
