@@ -8,6 +8,17 @@ const express = require('express');
 const YAML = require('yamljs');
 const fs = require('fs');
 
+// error handling
+const EventEmitter = require('events');
+const ErrorHandler = new EventEmitter();
+
+ErrorHandler.on('error', (err) => {
+  const errorLog = './.server.error.log';
+  fs.appendFile(errorLog  + "\n", err, (e) => {
+    if (e) console.error(e);
+  });
+});
+
 // Express settings
 const router = express.Router();
 const port = process.env.PORT || 8080;
@@ -75,29 +86,30 @@ router.get('/', async function(req, res) {
         // TODO: add error loging with notification system
         if (response.status.statusCode !== 'SUCCESS') console.error(response);
 
-        order.changeStatus('CREATED').save();
+        order.changeStatus('CREATED').save().then(() => {
+          res.send(`<a href="${response.redirectUri}">place order</a>`);
+        });
 
-        res.send(`<a href="${response.redirectUri}">place order</a>`);
       });
 
     });
 
 
-  } catch (err) {
-    console.trace(err);
+  } catch (e) {
+    ErrorHandler.emit('error', e);
   }
 
 });
 
-router.get('/random', async function(req, res) {
-  try {
-    const randomOrder = require('./randomOrder.js');
-    const order = await randomOrder();
-    res.json(order);
-  } catch (err) {
-    console.trace(err);
-  }
-});
+// router.get('/random', async function(req, res) {
+//   try {
+//     const randomOrder = require('./randomOrder.js');
+//     const order = await randomOrder();
+//     res.json(order);
+//   } catch (e) {
+//     ErrorHandler.emit('error', e);
+//   }
+// });
 
 // router.get('/products', async function(req, res) {
 //   try {
@@ -130,7 +142,7 @@ router.get('/random', async function(req, res) {
 // });
 
 router.get('/paymethods', function(req, res) {
-  payu.paymethods().then((methods) => res.json(methods)).catch((err) => console.error(err));
+  payu.paymethods().then((methods) => res.json(methods)).catch((e) => ErrorHandler.emit('error', e));
 });
 
 router.post('/notify', bodyParser.text({type: '*/*'}), async function(req, res) {
@@ -138,28 +150,35 @@ router.post('/notify', bodyParser.text({type: '*/*'}), async function(req, res) 
   try {
 
     // body MUST be parsed as text
-    if (payu.verifyNotification(req.headers['openpayu-signature'], req.body)) {
-      // It's an older code, sir, but it checks out.
-      const db = await mongoose.connect(mongoUri, mongooseOptions);
-      const notification = JSON.parse(req.body);
-      const Order = require('./models/order.js');
-      const User = require('./models/user.js');
+    const notification = payu.handleNotification(req.headers['openpayu-signature'], req.body);
+    if (!notification) throw new Error('Wrong signature.');
 
-      // console.log(notification);
+    const status = notification.status;
 
-      const order = await Order.findById(notification.order.extOrderId);
-      order.changeStatus(notification.order.status).save();
+    const db = await mongoose.connect(mongoUri, mongooseOptions);
+    const Order = require('./models/order.js');
+    const User = require('./models/user.js');
 
+    const order = await Order.findById(notification.extOrderId);
+    if (!order) throw new Error(`There is no such order.`);
 
-      res.status(200);
-      res.send('OK!');
-    } else {
-      res.status(400);
-      res.send('Bad Request');
-    };
+    order.changeStatus(status).save();
+
+    if (status === 'COMPLETED') {
+      const user = new User(notification.user);
+      user.orders.unshift(order._id);
+      order.client = user._id;
+      order.save();
+      user.save();
+    }
+
+    res.status(200);
 
   } catch (e) {
-    console.trace(e);
+
+    console.log(e);
+    // ErrorHandler.emit('error', e);
+
   }
 
 

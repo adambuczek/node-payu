@@ -9,7 +9,7 @@ const EventEmitter = require('events');
 const ErrorHandler = new EventEmitter();
 
 ErrorHandler.on('error', (err) => {
-  const errorLog = '.error.log';
+  const errorLog = '.payu.error.log';
   fs.appendFile(errorLog, err, (e) => {
     if (e) console.error(e);
   });
@@ -74,7 +74,7 @@ PayU.prototype.authorize = async function() {
       auth = JSON.parse(response);
       auth.expires_at = now + auth.expires_in;
       fs.writeFile(cacheLocation, JSON.stringify(auth), (err) => {
-        if (err) throw new Exception(err)
+        if (err) throw new (err)
       });
     }
     return auth.access_token;
@@ -84,66 +84,124 @@ PayU.prototype.authorize = async function() {
 };
 
 PayU.prototype.verifyNotification = function(header, body) {
-  const incoming = header.split(';').reduce((a,c) => {let tmp = c.split('='); a[tmp[0]] = tmp[1]; return a;}, {});
-  if (incoming.algorithm !== 'MD5') throw new Exception(`Unsupported hashing algorithm: ${incoming.algorithm}`);
+  const incoming = header.split(';').reduce((a, c) => {
+    let tmp = c.split('=');
+    a[tmp[0]] = tmp[1];
+    return a;
+  }, {});
+  if (incoming.algorithm !== 'MD5') throw new (`Unsupported hashing algorithm: ${incoming.algorithm}`);
   if (incoming.signature === md5(body + this.signatureKey)) return true;
   return false;
 }
 
-PayU.prototype.paymethods = async function() {
-  const auth = await this.authorize();
-  const url = '/api/v2_1/paymethods/';
-  const headers = {
-    'Authorization': `Bearer ${auth}`
-  };
-  try {
-    let response = await requestPromise({
-      method: 'GET',
-      url: this.baseUrl + url,
-      headers: headers
-    });
-    return JSON.parse(response);
-  } catch (e) {
-    ErrorHandler.emit('error', e);
-  }
-};
+/**
+ * Handle PayU notification
+ * @param  Object notification PayU notification Object
+ * @return Object              An object with status and a possible client info.
+ */
+PayU.prototype.handleNotification = function(header, body) {
+    if (this.verifyNotification(header, body)) {
+        const notification = JSON.parse(body);
+        const status = notification.order.status;
+        // switch (status) {
+        //   case 'NEW':
+        //     break;
+        //   case 'PENDING':
+        //     break;
+        //   case 'WAITING_FOR_CONFIRMATION':
+        //     break;
+        //   case 'COMPLETED':
+        //     break;
+        //   case 'CANCELED':
+        //     break;
+        //   case 'REJECTED':
+        //     break;
+        //   default:
+        // }
+        if (status === 'COMPLETED') {
+          return {
+            shippingMethod: notification.order.shippingMethod,
+            extOrderId: notification.order.extOrderId,
+            user: {
+              name: {
+                first: notification.order.buyer.firstName,
+                last: notification.order.buyer.lastName,
+              },
+              address: {
+                recipient: notification.order.buyer.delivery.recipientName,
+                country: notification.order.buyer.delivery.countryCode,
+                post: notification.order.buyer.delivery.postalCode,
+                street: notification.order.buyer.delivery.street,
+                city: notification.order.buyer.delivery.city,
+              },
+              language: notification.order.language,
+              email: notification.order.email,
+            },
+            status,
+          }
+        }
+        return {
+          extOrderId: notification.order.extOrderId,
+          status,
+        }
+      }
+      return false;
+    }
 
-PayU.prototype.order = async function(order) {
-  const auth = await this.authorize();
+    PayU.prototype.paymethods = async function() {
+      const auth = await this.authorize();
+      const url = '/api/v2_1/paymethods/';
+      const headers = {
+        'Authorization': `Bearer ${auth}`
+      };
+      try {
+        let response = await requestPromise({
+          method: 'GET',
+          url: this.baseUrl + url,
+          headers: headers
+        });
+        return JSON.parse(response);
+      } catch (e) {
+        ErrorHandler.emit('error', e);
+      }
+    };
 
-  const url = '/api/v2_1/orders/';
+    PayU.prototype.order = async function(order) {
+      const auth = await this.authorize();
 
-  const headers = {
-    'Authorization': `Bearer ${auth}`,
-    'Content-Type': 'application/json'
-  };
+      const url = '/api/v2_1/orders/';
 
-  try {
+      const headers = {
+        'Authorization': `Bearer ${auth}`,
+        'Content-Type': 'application/json'
+      };
 
-    let response = JSON.parse(await requestPromise({
-      method: 'POST',
-      url: this.baseUrl + url,
-      headers: headers,
-      body: JSON.stringify({
-        products: order.products,
-        description: this.posDesc,
-        merchantPosId: this.posId,
-        notifyUrl: this.notifyUrl,
-        extOrderId: order.extOrderId,
-        customerIp: order.customerIp,
-        continueUrl: this.continueUrl,
-        currencyCode: this.posCurrency,
-        totalAmount: order.totalAmount,
-        shippingMethods: order.shippingMethods,
-      }),
-      simple: false,
-    }));
+      try {
 
-    return response;
+        let response = JSON.parse(await requestPromise({
+          method: 'POST',
+          url: this.baseUrl + url,
+          headers: headers,
+          body: JSON.stringify({
+            products: order.products,
+            description: this.posDesc,
+            merchantPosId: this.posId,
+            notifyUrl: this.notifyUrl,
+            extOrderId: order.extOrderId,
+            customerIp: order.customerIp,
+            continueUrl: this.continueUrl,
+            currencyCode: this.posCurrency,
+            totalAmount: order.totalAmount,
+            shippingMethods: order.shippingMethods,
+          }),
+          simple: false,
+        }));
 
-  } catch (e) {
-    ErrorHandler.emit('error', e);
-  }
-};
+        return response;
 
-module.exports = PayU;
+      } catch (e) {
+        ErrorHandler.emit('error', e);
+      }
+    };
+
+    module.exports = PayU;
