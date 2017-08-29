@@ -56,7 +56,11 @@ router.get('/', async function(req, res) {
     const User = require('./models/user.js');
     const ShippingMethod = require('./models/shippingMethod.js');
 
-    let order = new Order(); // Prepare an Order object
+    let order = new Order({
+      client: user,
+      deliveryaddress: address,
+      shippingMethod,
+    }); // Prepare an Order object
 
     // reference the order in user
     User.findById(user).exec((err, user) => {
@@ -84,11 +88,7 @@ router.get('/', async function(req, res) {
 
       const totalAmount = products.reduce((acc, cur) => acc += cur.unitPrice * cur.quantity, 0);
 
-      order.shippingMethod = shippingMethod;
       order.totalAmount = totalAmount;
-      order.deliveryaddress = address;
-      order.client = user;
-
       order.save();
 
       /**
@@ -174,7 +174,9 @@ router.get('/paymethods', function(req, res) {
   payu.paymethods().then((methods) => res.json(methods)).catch((e) => ErrorHandler.emit('error', e));
 });
 
-router.post('/notify', bodyParser.text({type: '*/*'}), async function(req, res) {
+router.post('/notify', bodyParser.text({
+  type: '*/*'
+}), async function(req, res) {
 
   try {
 
