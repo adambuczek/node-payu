@@ -14,9 +14,10 @@ const ErrorHandler = new EventEmitter();
 
 ErrorHandler.on('error', (err) => {
   const errorLog = './.server.error.log';
-  fs.appendFile(errorLog  + "\n", err, (e) => {
-    if (e) console.error(e);
-  });
+  console.error(err);
+  // fs.appendFile(errorLog  + "\n", err, (e) => {
+  //   if (e) console.error(e);
+  // });
 });
 
 // Express settings
@@ -42,15 +43,26 @@ router.get('/', async function(req, res) {
 
   try {
 
-    const mockOrder = await require('./randomOrder.js')();
-    const cart = mockOrder;
+    const mockTicket = await require('./test/randomTicket.js')();
+
+    const cart = mockTicket.cart;
+    const address = mockTicket.address;
+    const shippingMethod = mockTicket.shippingMethod;
+    const user = mockTicket.user;
 
     const db = await mongoose.connect(mongoUri, mongooseOptions);
     const Product = require('./models/product.js');
     const Order = require('./models/order.js');
+    const User = require('./models/user.js');
     const ShippingMethod = require('./models/shippingMethod.js');
 
     let order = new Order(); // Prepare an Order object
+
+    // reference the order in user
+    User.findById(user).exec((err, user) => {
+      user.orders.unshift(order._id);
+      user.save();
+    });
 
     const products = cart.map(async function(item) {
 
@@ -72,8 +84,23 @@ router.get('/', async function(req, res) {
 
       const totalAmount = products.reduce((acc, cur) => acc += cur.unitPrice * cur.quantity, 0);
 
+      order.shippingMethod = shippingMethod;
       order.totalAmount = totalAmount;
+      order.deliveryaddress = address;
+      order.client = user;
+
       order.save();
+
+      /**
+       * Now we have the shipping method and client referenced in the order and
+       * availiable here as constans.
+       * TODO:
+       * 1) Populate the order with client and shippingMethod and pass to payment
+       *  system as a plain object along with the request in case the payment system need some
+       *  additional data about the client
+       * 2) Fit the payu order method to normalized order
+       *
+       */
 
       payu.order({
         products,
@@ -87,7 +114,9 @@ router.get('/', async function(req, res) {
         if (response.status.statusCode !== 'SUCCESS') console.error(response);
 
         order.changeStatus('CREATED').save().then(() => {
+
           res.send(`<a href="${response.redirectUri}">place order</a>`);
+
         });
 
       });

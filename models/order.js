@@ -3,6 +3,8 @@ const Schema = mongoose.Schema;
 // Order Schema
 const orderSchema = new Schema({
   created_at: Date,
+  updated_at: Date,
+  totalAmount: Number,
   statusHistory: [{
     status: String,
     changed: Date
@@ -14,7 +16,6 @@ const orderSchema = new Schema({
       ref: 'product'
     }
   }],
-  totalAmount: Number,
   client: {
     type: Schema.Types.ObjectId,
     ref: 'user'
@@ -23,7 +24,13 @@ const orderSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: 'shippingMethod'
   },
-  updated_at: Date,
+  deliveryaddress: {
+    recipient: String,
+    street: String,
+    city: String,
+    post: String,
+    country: {type: String, default: 'PL'}
+  },
 });
 
 orderSchema.methods.changeStatus = function(status) {
