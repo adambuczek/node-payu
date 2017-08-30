@@ -89,7 +89,21 @@ router.get('/', async function(req, res) {
       const totalAmount = products.reduce((acc, cur) => acc += cur.unitPrice * cur.quantity, 0);
 
       order.totalAmount = totalAmount;
-      order.save();
+
+      // wait for order to save and retrieve it fully populated
+      order.save().then(() => {
+        Order.findById(order._id)
+          .populate('shippingMethod')
+          .populate('client')
+          .populate({
+            path: 'products.product',
+            model: 'product'
+          })
+          .lean().exec((err, order) => {
+            console.log(order);
+            res.sendStatus(204);
+          });
+      });
 
       /**
        * Now we have the shipping method and client referenced in the order and
@@ -102,24 +116,24 @@ router.get('/', async function(req, res) {
        *
        */
 
-      payu.order({
-        products,
-        totalAmount,
-        shippingMethods,
-        customerIp: req.ip,
-        extOrderId: order._id
-      }).then(response => {
-        // TODO: add exponential falloff retry if the server returns 4xx status
-        // TODO: add error loging with notification system
-        if (response.status.statusCode !== 'SUCCESS') console.error(response);
-
-        order.changeStatus('CREATED').save().then(() => {
-
-          res.send(`<a href="${response.redirectUri}">place order</a>`);
-
-        });
-
-      });
+      // payu.order({
+      //   products,
+      //   totalAmount,
+      //   shippingMethods,
+      //   customerIp: req.ip,
+      //   extOrderId: order._id
+      // }).then(response => {
+      //   // TODO: add exponential falloff retry if the server returns 4xx status
+      //   // TODO: add error loging with notification system
+      //   if (response.status.statusCode !== 'SUCCESS') console.error(response);
+      //
+      //   order.changeStatus('CREATED').save().then(() => {
+      //
+      //     res.send(`<a href="${response.redirectUri}">place order</a>`);
+      //
+      //   });
+      //
+      // });
 
     });
 
