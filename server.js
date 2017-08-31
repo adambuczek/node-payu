@@ -60,6 +60,7 @@ router.get('/', async function(req, res) {
       client: user,
       deliveryaddress: address,
       shippingMethod,
+      products: cart
     }); // Prepare an Order object
 
     // reference the order in user
@@ -68,75 +69,50 @@ router.get('/', async function(req, res) {
       user.save();
     });
 
-    const products = cart.map(async function(item) {
-
-      // Documents returned from queries with the lean option enabled are plain javascript objects
-      const product = await Product.findById(item.id).lean();
-
-      order.products.push({ // populate an Order object with resolved shopping cart
-        product: product._id,
-        quantity: item.quantity
-      });
-
-      return Object.assign({}, product, item);
-    });
+    const products = cart;
+    // const products = cart.map(async function(item) {
+    //
+    //   // Documents returned from queries with the lean option enabled are plain javascript objects
+    //   const product = await Product.findById(item.id).lean();
+    //
+    //   order.products.push({ // populate an Order object with resolved shopping cart
+    //     product: product._id,
+    //     quantity: item.quantity
+    //   });
+    //
+    //   return Object.assign({}, product, item);
+    // });
 
     // Documents returned from queries with the lean option enabled are plain javascript objects
-    const shippingMethods = await ShippingMethod.find({}).lean(); // get all shiping methods
+    // const shippingMethods = await ShippingMethod.find({}).lean(); // get all shiping methods
 
-    Promise.all(products).then((products) => {
+    // wait for order to save and retrieve it fully populated
+    order.save().then(() => {
+      Order.findById(order._id)
+        .populate('shippingMethod')
+        .populate('client')
+        .populate({
+          path: 'products.product',
+          model: 'product'
+        })
+        .exec((err, order) => {
+          if (err) throw new Error(err);
+          payu.order({
+            products: order.products.toObject(),
+            customerIp: req.ip,
+            extOrderId: order._id,
+            client: order.client.toObject(),
+            deliveryaddress: order.deliveryaddress,
+            shippingMethod: order.shippingMethod.toObject(),
+          }).then(response => {
+            if (response.status.statusCode !== 'SUCCESS') console.error(response);
+            order.changeStatus('CREATED').save().then(() => {
+              res.send(`<a href="${response.redirectUri}">place order</a>`);
+            });
 
-      const totalAmount = products.reduce((acc, cur) => acc += cur.unitPrice * cur.quantity, 0);
-
-      order.totalAmount = totalAmount;
-
-      // wait for order to save and retrieve it fully populated
-      order.save().then(() => {
-        Order.findById(order._id)
-          .populate('shippingMethod')
-          .populate('client')
-          .populate({
-            path: 'products.product',
-            model: 'product'
-          })
-          .lean().exec((err, order) => {
-            console.log(order);
-            res.sendStatus(204);
           });
-      });
-
-      /**
-       * Now we have the shipping method and client referenced in the order and
-       * availiable here as constans.
-       * TODO:
-       * 1) Populate the order with client and shippingMethod and pass to payment
-       *  system as a plain object along with the request in case the payment system need some
-       *  additional data about the client
-       * 2) Fit the payu order method to normalized order
-       *
-       */
-
-      // payu.order({
-      //   products,
-      //   totalAmount,
-      //   shippingMethods,
-      //   customerIp: req.ip,
-      //   extOrderId: order._id
-      // }).then(response => {
-      //   // TODO: add exponential falloff retry if the server returns 4xx status
-      //   // TODO: add error loging with notification system
-      //   if (response.status.statusCode !== 'SUCCESS') console.error(response);
-      //
-      //   order.changeStatus('CREATED').save().then(() => {
-      //
-      //     res.send(`<a href="${response.redirectUri}">place order</a>`);
-      //
-      //   });
-      //
-      // });
-
+        });
     });
-
 
   } catch (e) {
     ErrorHandler.emit('error', e);

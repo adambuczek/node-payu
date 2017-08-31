@@ -4,7 +4,6 @@ const Schema = mongoose.Schema;
 const orderSchema = new Schema({
   created_at: Date,
   updated_at: Date,
-  totalAmount: Number,
   statusHistory: [{
     status: String,
     changed: Date

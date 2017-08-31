@@ -6,7 +6,7 @@ const randomTicket = async function() {
 return {
     cart,
     shippingMethod: '59a2cae4140889000ac408de',
-    user: user.id,
+    user: user._id,
     address: user.address
   }
 

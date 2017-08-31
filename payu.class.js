@@ -169,6 +169,13 @@ PayU.prototype.handleNotification = function(header, body) {
     PayU.prototype.order = async function(order) {
       const auth = await this.authorize();
 
+      order.shippingMethod.unitPrice = order.shippingMethod.price;
+      order.shippingMethod.quantity = 1;
+      order.products = order.products.map((product) => Object.assign({}, product, product.product));
+      order.products = order.products.concat(order.shippingMethod);
+
+      console.log(order);
+
       const url = '/api/v2_1/orders/';
 
       const headers = {
@@ -183,16 +190,40 @@ PayU.prototype.handleNotification = function(header, body) {
           url: this.baseUrl + url,
           headers: headers,
           body: JSON.stringify({
-            products: order.products,
-            description: this.posDesc,
-            merchantPosId: this.posId,
-            notifyUrl: this.notifyUrl,
             extOrderId: order.extOrderId,
+            notifyUrl: this.notifyUrl,
             customerIp: order.customerIp,
-            continueUrl: this.continueUrl,
+            merchantPosId: this.posId,
+            validityTime: 43200, // 12h
+            description: 'Description of the order',
+            additionalDescription: 'Additional description of the order',
             currencyCode: this.posCurrency,
-            totalAmount: order.totalAmount,
-            shippingMethods: order.shippingMethods,
+            totalAmount: order.products.reduce((acc, cur) => acc += cur.unitPrice * cur.quantity, 0),
+            continueUrl: this.continueUrl,
+            settings: {
+              invoiceDisabled: 'true'
+            },
+            buyer: {
+              customerIp: order.customerIp,
+              extCustomerId: order.client._id,
+              email: order.client.email,
+              // phone,
+              firstName: order.client.name.first,
+              lastName: order.client.name.last,
+              // nin, // national identification number
+              language: order.client.language,
+              delivery: {
+                street: order.deliveryaddress.street,
+                // postalBox,
+                postalCode: order.deliveryaddress.post,
+                city: order.deliveryaddress.city,
+                // state:
+                countryCode: order.deliveryaddress.country,
+                // name: // Address description
+                recipientName: order.deliveryaddress.recipient,
+              }
+            },
+            products: order.products,
           }),
           simple: false,
         }));

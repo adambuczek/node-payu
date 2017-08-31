@@ -5,7 +5,7 @@ const randomCart = async function() {
 
   return products.map(product => {
     return {
-      id: product._id,
+      product: product._id,
       quantity: Math.floor(Math.random() * 5)
     }
   }).filter(p => p.quantity > 0);
